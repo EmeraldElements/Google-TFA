@@ -1,0 +1,117 @@
+﻿@model EmeraldElements.TwoFactorAuthentication.ViewModels.TwoFactorAuthenticationViewModel
+@{
+    var hasVerifiedKey = Model.HasVerifiedKey;
+    var tfaRequired = Model.RequireTFA;
+    var siteBackupSMSEnabled = Model.SiteEnableBackupSMS;
+    var siteBackupSMSRequired = Model.RequireBackupSMS;
+
+    var isUserAdminArea = WorkContext.HttpContext.Request.Url.AbsolutePath.Contains("Admin/Users");
+}
+
+<fieldset>
+    <legend>@T("Two-Factor Authentication")</legend>
+    @if (isUserAdminArea)
+    {
+        <div>
+            @Html.EditorFor(m => m.CanLoginWithoutTFA)
+            <label for="@Html.FieldIdFor(m => m.CanLoginWithoutTFA)" class="forcheckbox">@T("One-Time Login")</label>
+            @Html.ValidationMessage(Html.FieldIdFor(m => m.CanLoginWithoutTFA), "*")
+            <span class="hint">@T("Check to allow the user to login once without TFA")</span>
+        </div>
+    }
+    else
+    {
+        <div>
+            @Html.EditorFor(m => m.EnableTFA)
+            <label for="@Html.FieldIdFor(m => m.EnableTFA)" class="forcheckbox">@T("Enable TFA")</label>
+            @Html.ValidationMessage("EnableTFA", "*")
+            <span class="hint">@T("Check to enable two-factor authentication.")</span>
+        </div>
+                
+        <div data-controllerid="@Html.FieldIdFor(m => m.EnableTFA)">
+            @* TFA *@
+            <div style="display: inline-block;">
+                <label for="@Html.FieldIdFor(m => m.SecretKey)">@T("Secret Key")</label>
+                @Html.TextBoxFor(m => m.SecretKey, new { @class = "text medium", @readonly = "readonly" })
+                @Html.ValidationMessage("SecretKey", "*")                
+            </div>
+            <div style="display: inline-block;">                
+                <input type="button" value="Generate new Key" id="generate-new-key" />
+            </div>
+            <div style="display: inline-block;">
+                <input type="button" value="Show/Hide QRCode" id="toggle-image" />
+            </div>    
+                           
+            @* Provisioning Image *@
+            <div id="prov-image" style="display: none; margin-top: 5px;">
+                <img src="data:image;base64,@System.Convert.ToBase64String(Model.QRCode)" />
+                @*<img src="@Model.QRCode" alt="QR Code" title="QR Code" />*@
+                @*<img src="@Url.Action("DisplayProvImg", "TwoFactorAuthentication", new { area = "EmeraldElements.TwoFactorAuthentication",img = System.Text.Encoding.UTF8.GetString(Model.QRCode) })" alt="QR Code" />*@
+            </div>
+      
+            @* Verify Key *@
+            <div id="verify-key" style="display: @(hasVerifiedKey ? "none":"block")">
+                <label for="@Html.FieldIdFor(m => m.PinToVerifyKey)">@T("Verify Pin")</label>
+                @Html.TextBoxFor(m => m.PinToVerifyKey, new { @class = "text medium" })
+                @Html.ValidationMessage("PinToVerifyKey", "*")
+                <span class="hint">@T("Please verify TFA was set up correctly.")</span>
+            </div>
+
+            <br />
+            <br />
+
+            @*BackupSMS*@
+            @if (siteBackupSMSEnabled) //|| siteBackupSMSRequired)
+            {
+                <div>
+                    @Html.EditorFor(m => m.EnableBackupSMS)
+                    <label for="@Html.FieldIdFor(m => m.EnableBackupSMS)" class="forcheckbox">@T("Enable Backup SMS")</label>
+                    @Html.ValidationMessage("EnableBackupSMS", "*")
+                    <span class="hint">@T("Check to enable backup sms.")</span>
+                </div>
+                <div data-controllerid="@Html.FieldIdFor(m => m.EnableBackupSMS)">
+                    <div>
+                        <label for="@Html.FieldIdFor(m => m.BackupSMSNum)">@T("Backup SMS Number")</label>
+                        @Html.TextBoxFor(m => m.BackupSMSNum, new { @class = "text medium" })
+                        @Html.ValidationMessage("BackupSMSNum", "*")
+                        <span class="hint">@T("Number to send backup sms to.")</span>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</fieldset>
+
+@using (Script.Foot())
+{
+    <script type="text/javascript">        
+        $(document).ready(function () {
+            //Hide user roles - temp workaround
+            $("legend:contains('Roles')").parent().hide();
+
+            //Prov image toggle
+            $("#toggle-image").click(function () {
+                $("#prov-image").toggle();
+            });
+
+            //New key generation
+            var url = "@Url.Action("GenerateNewKey", "TwoFactorAuthentication", new {area = "EmeraldElements.TwoFactorAuthentication"})";
+            var key = $("#@Html.FieldIdFor(m => m.SecretKey)") 
+            var qr_code = $("#prov-image img");
+
+            $("#generate-new-key").click(function () {
+                $.post(url, {
+                    __RequestVerificationToken: key.closest("form").find("input[name=__RequestVerificationToken]").val()
+                })
+                .fail(function (data) {
+
+                })
+                .done(function (data) {                    
+                    key.val(data.newKey);
+                    $("#verify-key").show();
+                    qr_code.attr('src', "data:image;base64," + data.newQRCode);                    
+                });
+            });
+        });
+    </script>
+}

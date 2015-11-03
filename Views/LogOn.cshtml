@@ -1,0 +1,155 @@
+﻿@using Orchard.ContentManagement
+
+@{
+    Script.Require("jQuery").AtHead();
+    var userCanRegister = WorkContext.CurrentSite.As<Orchard.Users.Models.RegistrationSettingsPart>().UsersCanRegister;
+    var enableLostPassword = WorkContext.CurrentSite.As<Orchard.Users.Models.RegistrationSettingsPart>().EnableLostPassword;
+    var displayTFAChallenge = Session["displayTFAChallenge"] != null ? (bool)Session["displayTFAChallenge"] : false;
+}
+
+<h1 class="page-title">@Html.TitleForPage((string)Model.Title)</h1>
+<p>
+    @T("Please enter your username and password.") 
+    @if(userCanRegister) { @Html.ActionLink(T("Register").Text, "Register", new { ReturnUrl = Request.QueryString["ReturnUrl"] }) @T(" if you don't have an account.") }
+    @if(enableLostPassword) { <text> </text> @Html.ActionLink(T("Lost your Password?").Text, "RequestLostPassword") }
+</p>
+@Html.ValidationSummary(T("Login was unsuccessful. Please correct the errors and try again.").ToString())
+<div id="validation-errors" class="message-Error" style="display: none;">
+    <p>@T("Login was unsuccessful. Please correct the errors and try again.").ToString()</p>
+    <ol id="error-list" style="list-style-type: disc;"></ol>
+</div>
+<div id="validation-info" class="message-Information" style="display: none;">
+    <ol id="info-list" style="list-style-type: disc;"></ol>
+</div>
+
+@using (Html.BeginFormAntiForgeryPost(Url.Action("LogOn", "TwoFactorAuthentication", new { ReturnUrl = Request.QueryString["ReturnUrl"] }))) {
+<fieldset class="login-form group">
+    <legend>@T("Account Information")</legend>
+    <ol>        
+        @if (displayTFAChallenge)
+        {            
+            <li id="tfa-wrapper">                   
+                <label for="tfacode">@T("TFA Code")</label>
+                @Html.TextBox("tfacode", "", new { id = "tfa-code" })
+                @Html.ValidationMessage("tfacode") 
+                <p>@T("Lost your pin? Click ")<a href="#" id="send-backup-pin">@T("here")</a>@T(" to send backup pin via sms/email")</p>
+            </li>                       
+        }
+        else
+        {
+            <li id="username-wrapper">
+                <label for="username-email">@T("Username")</label>
+                @Html.TextBox("userNameOrEmail", "", new { id = "username-email", autofocus = "autofocus" })
+                @Html.ValidationMessage("userNameOrEmail")
+            </li>
+            <li id="password-wrapper">
+                <label for="password">@T("Password")</label>
+                @Html.Password("password")
+                @Html.ValidationMessage("password")
+            </li>
+            <li id="tfa-wrapper" style="display: none;">                   
+                <label for="tfacode">@T("TFA Code")</label>
+                @Html.TextBox("tfacode", "", new { id = "tfa-code" })
+                @Html.ValidationMessage("tfacode")  
+                <p>@T("Lost your pin? Click ")<a href="#" id="send-backup-pin">@T("here")</a>@T(" to send backup pin via sms/email")</p>
+            </li>
+            <li>
+                @Html.CheckBox("rememberMe", new { id = "remember-me" })<label class="forcheckbox" for="remember-me">@T("Remember Me")</label>
+            </li>
+        }        
+    </ol>
+    <button class="primaryAction" type="submit" data-clicked="False">@T("Sign In")</button>
+</fieldset>
+}
+
+@using (Script.Foot())
+{
+    <script type="text/javascript">
+        $(document).ready(function () {
+            //Backup TFA Pin
+            $("#send-backup-pin").click(function () {
+                $("#validation-errors").hide();
+                $("#validation-info").hide();
+                var tfaCode = $("#tfa-code");
+                var url = "@Url.Action("SendBackupPin", "TwoFactorAuthentication", new {area = "EmeraldElements.TwoFactorAuthentication"})";
+
+                $.post(url, {
+                    __RequestVerificationToken: tfaCode.closest("form").find("input[name=__RequestVerificationToken]").val()
+                })
+                .fail(function (data) {
+
+                })
+                .done(function (data) {
+                    if (data.error)
+                    {
+                        $("#error-list").empty();
+                        for (var i = 0; i < data.errors.length; i++) {
+                            $("#error-list").append("<li>" + data.errors[i].Text + "</li>");
+                        }
+                        $("#validation-errors").show();
+                    }
+                    else
+                    {
+                        $("#info-list").empty();
+                        for (var i = 0; i < data.infos.length; i++) {
+                            $("#info-list").append("<li>" + data.infos[i].Text + "</li>");
+                        }
+                        $("#validation-info").show();
+                    }
+                });
+            });
+
+            //Logging in
+            $(".primaryAction").on("click", function (e) {
+                $("#validation-errors").hide();
+                $("#validation-info").hide();
+                var tfaChecked = $(this).data('clicked');
+                var userNameOrEmail = $("#username-email");
+                var password = $("#password");
+                var rememberMe = $("#remember-me");                
+
+                if (tfaChecked === "False") {
+                    e.preventDefault();                    
+                    $(this).data('clicked', "True");
+
+                    //Post to action that checks for the need to use tfa
+                    var url = "@Url.Action("CheckTFALogin", "TwoFactorAuthentication", new {area = "EmeraldElements.TwoFactorAuthentication"})";                               
+                
+                    //Post
+                    $.post(url, {
+                        userNameOrEmail: userNameOrEmail.val(),
+                        password: password.val(),
+                        rememberMe: rememberMe.val(),
+                        returnUrl: "@Request.QueryString["ReturnUrl"]",
+                        __RequestVerificationToken: userNameOrEmail.closest("form").find("input[name=__RequestVerificationToken]").val()
+                    })
+                    .fail(function (data) {
+                        $("#error-list").empty();
+                        $("#error-list").append("<li>There was a problem with the request, please try again.</li>");
+                        $("#validation-errors").show();
+                    })
+                    .done(function (data) {
+                        if (data.error) {
+                            $("#error-list").empty();
+                            $(".primaryAction").data('clicked', "False");
+                            for (var i = 0; i < data.errors.length; i++) {
+                                $("#error-list").append("<li>" + data.errors[i] + "</li>");
+                            }                            
+                            $("#validation-errors").show();                           
+                        } else {                                                  
+                            if (data.displayTFAChallenge == "True") {                                
+                                $("#tfa-wrapper").show();
+                                $("#username-wrapper").hide();
+                                $("#password-wrapper").hide();
+                                $("#remember-me").hide();
+                                $(".primaryAction").text("@T("Validate TFA Pin")")
+                            } else if (data.displayTFAChallenge == "False") {                                
+                                window.location = data.returnUrl;
+                            }
+                        }
+                    });               
+                }                 
+            });            
+        });
+    </script>
+}

@@ -1,0 +1,5 @@
+﻿<Placement>
+  <Place Parts_TwoFactorAuthenticationSettings_Edit="Content:10"/>
+  <Place Parts_TwoFactorAuthentication_Edit="Content:10"/>
+  <Place Parts_SmsSettings_Edit="Content:10"/>
+</Placement>

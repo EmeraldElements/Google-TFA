@@ -1,0 +1,6 @@
+﻿.navicon-my-profile {
+background-image:url(images/menu.users.png) !important;
+}
+.navicon-my-profile:hover {
+background-position:0 -30px !important;
+}

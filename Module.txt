@@ -1,0 +1,27 @@
+﻿Name: Two-Factor Authentication
+AntiForgery: enabled
+Author: Emerald Elements
+Website: http://www.emeraldelements.com
+Version: 1.0.1.5
+OrchardVersion: 1.9
+Description: Description for the module
+Features:
+    EmeraldElements.TwoFactorAuthentication:
+        Name: Two-Factor Authentication
+		Description: Adds Two-Factor Authentication features to Orchard.
+		Category: Security		
+		Dependencies: Orchard.Users, Orchard.Email
+	EmeraldElements.TwoFactorAuthentication.UserProfile:
+        Name: User Profile
+        Description: Provides an area for users to view/edit their profile/settings
+        Category: Users
+        Dependencies: Orchard.Users
+	EmeraldElements.TwoFactorAuthentication.Sms:
+		Name: Twilio SMS
+        Description: SMS Messaging Services
+        Category: Messaging        
+	EmeraldElements.TwoFactorAuthentication.SmsWorkflows:
+		Name: SMS Workflows Activities
+        Description: Provides SMS Sending Activities
+        Category: Workflows
+        Dependencies: EmeraldElements.TwoFactorAuthentication.Sms, Orchard.Workflows

@@ -1,0 +1,80 @@
+﻿
+@model EmeraldElements.TwoFactorAuthentication.Models.SmsSettingsPart
+@{
+    //var smsClient = new TwilioRestClient();
+}
+
+<fieldset>
+    <legend>@T("Twilio SMS")</legend>    
+    <div>
+        <label for="@Html.FieldIdFor(m => m.AccountSid)">@T("Account SID")</label>
+        @Html.TextBoxFor(m => m.AccountSid, new { @class = "text medium" })
+        @Html.ValidationMessage("AccountSid", "*")
+        <span class="hint">@T("Account SID provided by Twilio.")</span>
+    </div>
+    <div>
+        <label for="@Html.FieldIdFor(m => m.AuthToken)">@T("Auth Token")</label>
+        @Html.TextBoxFor(m => m.AuthToken, new { @class = "text medium" })
+        @Html.ValidationMessage("AuthToken", "*")
+        <span class="hint">@T("Auth Token provided by Twilio.")</span>
+    </div>
+    <div>
+        <label for="@Html.FieldIdFor(m => m.TwilioNumber)">@T("Phone Number")</label>
+        @Html.TextBoxFor(m => m.TwilioNumber, new { @class = "text medium", placeholder = Model.TwilioNumberPlaceholder })
+        @Html.ValidationMessage("TwilioNumber", "*")
+        <span class="hint">@T("Phone number provided by Twilio.")</span>
+    </div>
+</fieldset>
+<fieldset>
+    <legend>@T("Test those settings:")</legend>
+    <div>
+        <label for="smstestto">@T("To:")</label>
+        <input type="text" id="smstestto" class="large text" />
+    </div>
+    <div>
+        <textarea id="smstestbody"></textarea>
+    </div>
+    <div>
+        <button type="button" id="smstestsend" class="button grey">@T("Send")</button>
+    </div>
+    <div id="smstesterror" class="message-Error" style="display:none;"></div>
+    <div id="smstestinfo" class="message-Information" style="display:none;"></div>
+    @using (Script.Foot()) {
+        <script type="text/javascript">
+            $(function () {
+                var url = "@Url.Action("TestSettings", "Sms", new {area = "EmeraldElements.TwoFactorAuthentication"})",
+                    error = $("#smstesterror"),
+                    info = $("#smstestinfo"),
+                    from = $("#@Html.FieldIdFor(m => m.TwilioNumber)"),
+                    accountsid = $("#@Html.FieldIdFor(m => m.AccountSid)"),
+                    authtoken = $("#@Html.FieldIdFor(m => m.AuthToken)"),                    
+                    to = $("#smstestto"),                   
+                    body = $("#smstestbody")
+
+                $("#smstestsend").click(function () {                    
+                    $.post(url, {
+                        from: from.val(),                        
+                        accountsid: accountsid.val(),
+                        authtoken: authtoken.val(),                       
+                        to: to.val(),
+                        body: body.val(),                        
+                        __RequestVerificationToken: to.closest("form").find("input[name=__RequestVerificationToken]").val()
+                    })
+                    .fail(function (data) {
+                        error.html(data.statusText).show();
+                        info.hide();
+                    })
+                    .done(function (data) {
+                        if (data.error) {
+                            error.html(data.error).show();
+                            info.hide();
+                        } else {
+                            info.html(data.status).show();
+                            error.hide();
+                        }
+                    });
+                });
+            });
+        </script>
+    }
+</fieldset>
